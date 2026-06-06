@@ -1,0 +1,19 @@
+{
+  "Author": "Airi Tsukino",
+  "Name": "RaffleManager",
+  "InternalName": "RaffleManager",
+  "AssemblyVersion": "0.2.10.0",
+  "Description": "Generic raffle manager for FFXIV venues with ticket pricing, base jackpots, split payouts, venue profiles, custom branding, target-based adds, winner animation, and chat announcements.",
+  "Tags": [
+    "raffle",
+    "venue",
+    "tickets",
+    "jackpot",
+    "gil"
+  ],
+  "Punchline": "Purple-themed venue raffle manager with true ticket-based random draws.",
+  "ApplicableVersion": "any",
+  "DalamudApiLevel": 15,
+  "IsHide": false,
+  "IsTestingExclusive": false
+}
