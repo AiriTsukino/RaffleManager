@@ -152,12 +152,6 @@ internal sealed class SoundService : IDisposable
             return bundledWav;
         }
 
-        var bundledMp3 = Path.Combine(assemblyDir, "Resources", "tick.mp3");
-        if (File.Exists(bundledMp3))
-        {
-            extractedDefaultSoundPath = bundledMp3;
-            return bundledMp3;
-        }
 
         var targetDir = Path.Combine(Path.GetTempPath(), "RaffleManager");
         Directory.CreateDirectory(targetDir);
