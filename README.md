@@ -2,7 +2,12 @@
 
 RaffleManager is a Dalamud plugin for Final Fantasy XIV venues. It manages ticket-based raffles, live jackpot calculations, venue profiles, winner history, branded winner screenshots, and optional in-game winner announcements.
 
-Repo Link: `https://raw.githubusercontent.com/AiriTsukino/RaffleManager/main/pluginmaster.json`
+## Repo Link
+ 
+```text
+https://raw.githubusercontent.com/AiriTsukino/RaffleManager/main/pluginmaster.json
+```
+[Discord Server](https://discord.com/invite/HqyDz3SRbG)
 
 ## Features
 
