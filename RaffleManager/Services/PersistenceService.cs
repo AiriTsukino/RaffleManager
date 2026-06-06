@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using RaffleManager.Models;
 
 namespace RaffleManager.Services;
@@ -116,7 +117,12 @@ internal sealed class PersistenceService
                 Directory.CreateDirectory(directory);
 
             var export = CloneProfileWithData(profile, profile.Name);
-            File.WriteAllText(path, JsonSerializer.Serialize(export, jsonOptions));
+            // Do not include local logo file paths in exported venue profiles.
+            // Those paths are machine-specific and can break or leak local usernames when shared.
+            var exportJson = JsonSerializer.SerializeToNode(export, jsonOptions);
+            if (exportJson is JsonObject exportObject)
+                exportObject.Remove(nameof(VenueProfile.CustomLogoPath));
+            File.WriteAllText(path, exportJson?.ToJsonString(jsonOptions) ?? "{}");
             message = $"Exported profile '{profile.Name}' to {path}.";
             return true;
         }
@@ -162,6 +168,8 @@ internal sealed class PersistenceService
             imported.Name = Configuration.SanitizeProfileName(string.IsNullOrWhiteSpace(imported.Name)
                 ? Path.GetFileNameWithoutExtension(path)
                 : imported.Name);
+            // Imported profiles should not carry over another user's local logo path.
+            imported.CustomLogoPath = string.Empty;
             Configuration.EnsureProfileDefaults(imported);
 
             config.VenueProfiles[imported.Name] = imported;

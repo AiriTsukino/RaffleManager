@@ -2,7 +2,7 @@
   "Author": "Airi Tsukino",
   "Name": "RaffleManager",
   "InternalName": "RaffleManager",
-  "AssemblyVersion": "0.2.10.0",
+  "AssemblyVersion": "0.2.11.0",
   "Description": "Generic raffle manager for FFXIV venues with ticket pricing, base jackpots, split payouts, venue profiles, custom branding, target-based adds, winner animation, and chat announcements.",
   "Tags": [
     "raffle",
