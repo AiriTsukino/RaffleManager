@@ -20,8 +20,6 @@ Repo Link: `https://raw.githubusercontent.com/AiriTsukino/RaffleManager/main/plu
 - Optional winner announcement to `/say`, `/shout`, or `/yell`.
 - Configurable winner announcement message.
 - Tick sound during winner selection with volume control.
-- `/rafflemanager` toggles the main UI.
-- `/rafflemanagersettings` toggles settings.
 
 ## Commands
 
