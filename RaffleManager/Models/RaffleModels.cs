@@ -56,6 +56,13 @@ public sealed class RaffleEntry
     public string World { get; set; } = string.Empty;
     public int Tickets { get; set; } = 1;
 
+    // Tickets that contributed to the jackpot. -1 means legacy profile data where all tickets were paid.
+    public int JackpotTickets { get; set; } = -1;
+
+    public int EffectiveJackpotTickets => JackpotTickets < 0 ? Tickets : Math.Clamp(JackpotTickets, 0, Tickets);
+    public int FreeTickets => Math.Max(0, Tickets - EffectiveJackpotTickets);
+    public bool HasFreeTickets => FreeTickets > 0;
+
     public string DisplayName => string.IsNullOrWhiteSpace(World) ? Name : $"{Name}@{World}";
 }
 
@@ -65,7 +72,9 @@ public sealed class WinnerRecord
     public string Name { get; set; } = string.Empty;
     public string World { get; set; } = string.Empty;
     public int Tickets { get; set; }
+    public int JackpotTickets { get; set; }
     public int TotalTickets { get; set; }
+    public int TotalJackpotTickets { get; set; }
     public int TotalParticipants { get; set; }
     public int Jackpot { get; set; }
     public int Payout { get; set; }

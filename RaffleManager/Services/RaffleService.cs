@@ -22,12 +22,13 @@ internal sealed class RaffleService
     public IReadOnlyList<WinnerRecord> WinnerHistory => Data.WinnerHistory;
     public int ParticipantCount => Data.Entries.Count;
     public int TotalTickets => Data.Entries.Sum(e => Math.Max(0, e.Tickets));
-    public int Jackpot => (int)Math.Min(int.MaxValue, (long)Profile.BaseJackpot + ((long)TotalTickets * Profile.TicketPrice));
+    public int TotalJackpotTickets => Data.Entries.Sum(e => Math.Max(0, e.EffectiveJackpotTickets));
+    public int Jackpot => (int)Math.Min(int.MaxValue, (long)Profile.BaseJackpot + ((long)TotalJackpotTickets * Profile.TicketPrice));
     public int WinnerPayout => (int)Math.Min(int.MaxValue, Math.Floor(Jackpot * (Profile.WinnerSplitPercent / 100.0)));
 
     public string LastStatus { get; private set; } = "Ready.";
 
-    public bool AddOrUpdate(string name, string world, int tickets)
+    public bool AddOrUpdate(string name, string world, int tickets, bool countTowardJackpot = true)
     {
         name = (name ?? string.Empty).Trim();
         world = (world ?? string.Empty).Trim();
@@ -50,13 +51,23 @@ internal sealed class RaffleService
 
         if (existing is not null)
         {
+            var currentJackpotTickets = existing.EffectiveJackpotTickets;
             existing.Tickets += tickets;
-            LastStatus = $"Updated {existing.DisplayName}: now {existing.Tickets:N0} ticket(s).";
+            existing.JackpotTickets = currentJackpotTickets + (countTowardJackpot ? tickets : 0);
+            var freeNote = countTowardJackpot ? string.Empty : $" ({tickets:N0} free/VIP)";
+            LastStatus = $"Updated {existing.DisplayName}: now {existing.Tickets:N0} ticket(s){freeNote}.";
         }
         else
         {
-            Data.Entries.Add(new RaffleEntry { Name = name, World = world, Tickets = tickets });
-            LastStatus = $"Added {name}{(string.IsNullOrWhiteSpace(world) ? string.Empty : $"@{world}")} with {tickets:N0} ticket(s).";
+            Data.Entries.Add(new RaffleEntry
+            {
+                Name = name,
+                World = world,
+                Tickets = tickets,
+                JackpotTickets = countTowardJackpot ? tickets : 0,
+            });
+            var freeNote = countTowardJackpot ? string.Empty : " as free/VIP entries";
+            LastStatus = $"Added {name}{(string.IsNullOrWhiteSpace(world) ? string.Empty : $"@{world}")} with {tickets:N0} ticket(s){freeNote}.";
         }
 
         persistence.SaveNow();
@@ -129,7 +140,9 @@ internal sealed class RaffleService
             Name = entry.Name,
             World = entry.World,
             Tickets = entry.Tickets,
+            JackpotTickets = entry.EffectiveJackpotTickets,
             TotalTickets = TotalTickets,
+            TotalJackpotTickets = TotalJackpotTickets,
             TotalParticipants = ParticipantCount,
             Jackpot = Jackpot,
             Payout = WinnerPayout,
@@ -153,7 +166,7 @@ internal sealed class RaffleService
         persistence.SaveNow();
     }
 
-    public bool AddCurrentTarget(int tickets)
+    public bool AddCurrentTarget(int tickets, bool countTowardJackpot = true)
     {
         if (DalamudServices.TargetManager.Target is not IPlayerCharacter pc)
         {
@@ -165,7 +178,7 @@ internal sealed class RaffleService
         var world = string.Empty;
         try { world = pc.HomeWorld.Value.Name.ToString(); }
         catch { world = string.Empty; }
-        return AddOrUpdate(name, world, tickets);
+        return AddOrUpdate(name, world, tickets, countTowardJackpot);
     }
 
     private void Snapshot()
@@ -181,5 +194,6 @@ internal sealed class RaffleService
         Name = entry.Name,
         World = entry.World,
         Tickets = entry.Tickets,
+        JackpotTickets = entry.EffectiveJackpotTickets,
     };
 }

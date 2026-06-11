@@ -229,6 +229,7 @@ internal sealed class PersistenceService
                 Name = e.Name,
                 World = e.World,
                 Tickets = e.Tickets,
+                JackpotTickets = e.EffectiveJackpotTickets,
             }).ToList(),
             History = source.Data.History
                 .Select(snapshot => snapshot.Select(e => new RaffleEntry
@@ -237,6 +238,7 @@ internal sealed class PersistenceService
                     Name = e.Name,
                     World = e.World,
                     Tickets = e.Tickets,
+                    JackpotTickets = e.EffectiveJackpotTickets,
                 }).ToArray())
                 .ToList(),
             WinnerHistory = source.Data.WinnerHistory
@@ -245,7 +247,9 @@ internal sealed class PersistenceService
                     Name = w.Name,
                     World = w.World,
                     Tickets = w.Tickets,
+                    JackpotTickets = w.JackpotTickets,
                     TotalTickets = w.TotalTickets,
+                    TotalJackpotTickets = w.TotalJackpotTickets,
                     TotalParticipants = w.TotalParticipants,
                     Jackpot = w.Jackpot,
                     Payout = w.Payout,

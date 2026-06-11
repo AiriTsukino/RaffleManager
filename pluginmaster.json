@@ -3,7 +3,7 @@
     "Author": "Airi Tsukino",
     "Name": "RaffleManager",
     "InternalName": "RaffleManager",
-    "AssemblyVersion": "0.2.14.0",
+    "AssemblyVersion": "0.2.15.0",
     "Description": "Generic raffle manager for FFXIV venues with ticket pricing, base jackpots, split payouts, venue profiles, custom branding, target-based adds, winner animation, and chat announcements.",
     "Punchline": "Venue raffle manager with true ticket-based random draws.",
     "RepoUrl": "https://github.com/AiriTsukino/RaffleManager",
@@ -14,6 +14,6 @@
     "IconUrl": "https://raw.githubusercontent.com/AiriTsukino/RaffleManager/main/RaffleManager/Resources/RMLogo.png",
     "DownloadLinkInstall": "https://raw.githubusercontent.com/AiriTsukino/RaffleManager/main/RaffleManager.zip",
     "DownloadLinkUpdate": "https://raw.githubusercontent.com/AiriTsukino/RaffleManager/main/RaffleManager.zip",
-    "LastUpdate": "1780711000"
+    "LastUpdate": "1780728000"
   }
 ]

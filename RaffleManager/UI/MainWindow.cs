@@ -22,6 +22,7 @@ internal sealed class MainWindow : Window, IDisposable
     private string nameInput = string.Empty;
     private string worldInput = string.Empty;
     private int ticketsInput = 1;
+    private bool countTicketsTowardJackpot = true;
     private bool spinning;
     private double nextTickSeconds;
     private string displayName = "Ready";
@@ -219,7 +220,7 @@ internal sealed class MainWindow : Window, IDisposable
 
     private void DrawAddCard()
     {
-        UiHelpers.Header("Add Contestant", "Manual entry or target a player and add their ticket purchase. Matching name and world adds to the existing ticket count.");
+        UiHelpers.Header("Add Contestant", "Manual entry or target a player and add raffle entries. Matching name and world adds to the existing ticket count.");
 
         ImGui.Text("Character Name");
         ImGui.SetNextItemWidth(-1);
@@ -234,9 +235,13 @@ internal sealed class MainWindow : Window, IDisposable
 
         DrawQuantityButtons();
 
+        if (ImGui.Checkbox("Count these tickets toward jackpot", ref countTicketsTowardJackpot))
+            persistence.SaveConfig();
+        UiHelpers.TooltipOnHover("Turn this off for free/VIP entries. These entries still count as raffle chances, but they do not increase the jackpot total.");
+
         if (ImGui.Button("Add to Raffle"))
         {
-            if (raffle.AddOrUpdate(nameInput, worldInput, ticketsInput))
+            if (raffle.AddOrUpdate(nameInput, worldInput, ticketsInput, countTicketsTowardJackpot))
             {
                 nameInput = string.Empty;
                 worldInput = string.Empty;
@@ -246,10 +251,10 @@ internal sealed class MainWindow : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.Button("Add Target"))
         {
-            if (raffle.AddCurrentTarget(ticketsInput))
+            if (raffle.AddCurrentTarget(ticketsInput, countTicketsTowardJackpot))
                 ticketsInput = 1;
         }
-        UiHelpers.TooltipOnHover("Uses your current in-game target's name and home world. If that player already exists with the same name/world, their tickets are increased.");
+        UiHelpers.TooltipOnHover("Uses your current in-game target's name and home world. If that player already exists with the same name/world, their tickets are increased. Free/VIP entries do not add to the jackpot when the checkbox is off.");
         ImGui.SameLine();
         if (ImGui.Button("Undo")) raffle.Undo();
 
@@ -273,11 +278,12 @@ internal sealed class MainWindow : Window, IDisposable
     private void DrawContestantsCard()
     {
         ImGui.Spacing();
-        UiHelpers.Header("Contestants", $"{raffle.ParticipantCount:N0} contestant(s) · {raffle.TotalTickets:N0} ticket(s)");
-        if (ImGui.BeginTable("##entries", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable | ImGuiTableFlags.ScrollY, new Vector2(0, -42f)))
+        UiHelpers.Header("Contestants", $"{raffle.ParticipantCount:N0} contestant(s) · {raffle.TotalTickets:N0} ticket(s) · {raffle.TotalJackpotTickets:N0} paid");
+        if (ImGui.BeginTable("##entries", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable | ImGuiTableFlags.ScrollY, new Vector2(0, -42f)))
         {
             ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch, 2.8f);
             ImGui.TableSetupColumn("Tickets", ImGuiTableColumnFlags.WidthFixed, 78f);
+            ImGui.TableSetupColumn("Paid", ImGuiTableColumnFlags.WidthFixed, 70f);
             ImGui.TableSetupColumn("World", ImGuiTableColumnFlags.WidthStretch, 1.0f);
             ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, 62f);
             ImGui.TableHeadersRow();
@@ -288,6 +294,11 @@ internal sealed class MainWindow : Window, IDisposable
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn(); UiHelpers.ClippedTextWithTooltip(entry.Name);
                 ImGui.TableNextColumn(); ImGui.TextUnformatted(entry.Tickets.ToString("N0"));
+                if (ImGui.IsItemHovered() && entry.HasFreeTickets)
+                    UiHelpers.WrappedTooltip($"{entry.EffectiveJackpotTickets:N0} paid ticket(s), {entry.FreeTickets:N0} free/VIP ticket(s).");
+                ImGui.TableNextColumn(); ImGui.TextUnformatted(entry.EffectiveJackpotTickets.ToString("N0"));
+                if (ImGui.IsItemHovered() && entry.HasFreeTickets)
+                    UiHelpers.WrappedTooltip($"{entry.FreeTickets:N0} free/VIP ticket(s) do not add to the jackpot.");
                 ImGui.TableNextColumn(); UiHelpers.TextMuted(string.IsNullOrWhiteSpace(entry.World) ? "—" : entry.World);
                 ImGui.TableNextColumn();
                 if (ImGui.SmallButton("Delete")) pendingDelete = entry.Id;
@@ -344,6 +355,7 @@ internal sealed class MainWindow : Window, IDisposable
                     DrawMetricCell("Base Jackpot", UiHelpers.Gil(Profile.BaseJackpot));
                     DrawMetricCell("Ticket Price", UiHelpers.Gil(Profile.TicketPrice));
                     DrawMetricCell("Total Tickets", raffle.TotalTickets.ToString("N0"));
+                    DrawMetricCell("Paid Tickets", raffle.TotalJackpotTickets.ToString("N0"));
                     DrawMetricCell("Total Jackpot", UiHelpers.Gil(raffle.Jackpot));
                     DrawMetricCell($"Winner {Profile.WinnerSplitPercent}%", UiHelpers.Gil(raffle.WinnerPayout));
                     ImGui.EndTable();
@@ -351,12 +363,14 @@ internal sealed class MainWindow : Window, IDisposable
             }
             else
             {
-                ImGui.Columns(5, "##jackpotCols", false);
+                ImGui.Columns(6, "##jackpotCols", false);
                 DrawMetric("Base Jackpot", UiHelpers.Gil(Profile.BaseJackpot));
                 ImGui.NextColumn();
                 DrawMetric("Ticket Price", UiHelpers.Gil(Profile.TicketPrice));
                 ImGui.NextColumn();
                 DrawMetric("Total Tickets", raffle.TotalTickets.ToString("N0"));
+                ImGui.NextColumn();
+                DrawMetric("Paid Tickets", raffle.TotalJackpotTickets.ToString("N0"));
                 ImGui.NextColumn();
                 DrawMetric("Total Jackpot", UiHelpers.Gil(raffle.Jackpot));
                 ImGui.NextColumn();
@@ -387,10 +401,12 @@ internal sealed class MainWindow : Window, IDisposable
         var size = ImGui.GetContentRegionAvail();
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         var rowWidth = size.X;
-        var drawBothLogos = rowWidth >= 760f;
-        var drawOneLogo = !drawBothLogos && rowWidth >= 620f;
+        var customLogo = logo.Texture;
+        var hasLogo = customLogo is not null;
+        var drawBothLogos = hasLogo && rowWidth >= 760f;
+        var drawOneLogo = hasLogo && !drawBothLogos && rowWidth >= 620f;
 
-        // Hide logos entirely at the smallest sizes so the picker always remains visible and centered.
+        // Hide logos entirely when no custom logo is set or at the smallest sizes so the picker always remains visible and centered.
         var logoSize = Math.Clamp(size.Y * 0.68f, 136f, 205f);
         var logoCount = drawBothLogos ? 2f : drawOneLogo ? 1f : 0f;
         var displayHeight = Math.Clamp((logoCount > 0f ? logoSize : size.Y * 0.42f) * 0.66f, 92f, 126f);
@@ -409,7 +425,7 @@ internal sealed class MainWindow : Window, IDisposable
 
         if (logoCount > 0f)
         {
-            DrawLogoOrPlaceholder(new Vector2(logoSize, logoSize));
+            DrawLogoImage(customLogo!, new Vector2(logoSize, logoSize));
             ImGui.SameLine();
         }
 
@@ -434,7 +450,7 @@ internal sealed class MainWindow : Window, IDisposable
         if (drawBothLogos)
         {
             ImGui.SameLine();
-            DrawLogoOrPlaceholder(new Vector2(logoSize, logoSize));
+            DrawLogoImage(customLogo!, new Vector2(logoSize, logoSize));
         }
     }
 
@@ -450,7 +466,7 @@ internal sealed class MainWindow : Window, IDisposable
         return suffix;
     }
 
-    private void DrawLogoOrPlaceholder(Vector2 boxSize)
+    private static void DrawLogoImage(Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap texture, Vector2 boxSize)
     {
         var min = ImGui.GetCursorScreenPos();
         var max = min + boxSize;
@@ -458,19 +474,9 @@ internal sealed class MainWindow : Window, IDisposable
         draw.AddRectFilled(min, max, ImGui.GetColorU32(RaffleTheme.InputBg), 12f);
         draw.AddRect(min, max, ImGui.GetColorU32(RaffleTheme.Border), 12f, 0, 2f);
 
-        var texture = logo.Texture;
-        if (texture is not null)
-        {
-            var imageSize = FitImageSize(texture.Width, texture.Height, boxSize - new Vector2(8f, 8f));
-            var imagePos = min + ((boxSize - imageSize) * 0.5f);
-            draw.AddImage(texture.Handle, imagePos, imagePos + imageSize);
-            ImGui.Dummy(boxSize);
-            return;
-        }
-
-        var text = string.IsNullOrWhiteSpace(Profile.VenueName) ? "RM" : Profile.VenueName[..Math.Min(2, Profile.VenueName.Length)].ToUpperInvariant();
-        var textSize = ImGui.CalcTextSize(text);
-        draw.AddText(min + new Vector2((boxSize.X - textSize.X) * 0.5f, (boxSize.Y - textSize.Y) * 0.5f), ImGui.GetColorU32(RaffleTheme.Pink), text);
+        var imageSize = FitImageSize(texture.Width, texture.Height, boxSize - new Vector2(8f, 8f));
+        var imagePos = min + ((boxSize - imageSize) * 0.5f);
+        draw.AddImage(texture.Handle, imagePos, imagePos + imageSize);
         ImGui.Dummy(boxSize);
     }
 
@@ -574,31 +580,41 @@ internal sealed class MainWindow : Window, IDisposable
         CenteredText("WE HAVE A WINNER", RaffleTheme.Pink);
 
         ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 18f);
-        var logoBox = Math.Clamp(content.Y * 0.58f, 240f, 320f);
-        var winnerTextWidth = Math.Clamp(content.X * 0.28f, 260f, 340f);
-        var rowWidth = logoBox + ImGui.GetStyle().ItemSpacing.X + winnerTextWidth + ImGui.GetStyle().ItemSpacing.X + logoBox;
+        var customLogo = logo.Texture;
+        var hasLogo = customLogo is not null;
+        var logoBox = hasLogo ? Math.Clamp(content.Y * 0.58f, 240f, 320f) : 0f;
+        var winnerTextWidth = hasLogo ? Math.Clamp(content.X * 0.28f, 260f, 340f) : Math.Clamp(content.X * 0.44f, 420f, 560f);
+        var rowWidth = winnerTextWidth + (hasLogo ? (logoBox * 2f) + (ImGui.GetStyle().ItemSpacing.X * 2f) : 0f);
         var rowX = (content.X - rowWidth) * 0.5f;
         if (rowX > 0) ImGui.SetCursorPosX(ImGui.GetCursorPosX() + rowX);
 
-        DrawLogoOrPlaceholder(new Vector2(logoBox, logoBox));
-        ImGui.SameLine();
+        if (hasLogo)
+        {
+            DrawLogoImage(customLogo!, new Vector2(logoBox, logoBox));
+            ImGui.SameLine();
+        }
 
         var textBoxMin = ImGui.GetCursorScreenPos();
-        var textBoxSize = new Vector2(winnerTextWidth, logoBox);
+        var textBoxSize = new Vector2(winnerTextWidth, hasLogo ? logoBox : Math.Clamp(content.Y * 0.34f, 170f, 230f));
         draw.AddRectFilled(textBoxMin, textBoxMin + textBoxSize, ImGui.GetColorU32(RaffleTheme.InputBg), 12f);
         draw.AddRect(textBoxMin, textBoxMin + textBoxSize, ImGui.GetColorU32(RaffleTheme.Teal), 12f, 0, 2f);
 
         var winnerName = FitText(winnerPopup.DisplayName, winnerTextWidth - 30f);
         var nameSize = ImGui.CalcTextSize(winnerName);
-        draw.AddText(textBoxMin + new Vector2((winnerTextWidth - nameSize.X) * 0.5f, (logoBox - nameSize.Y) * 0.40f), ImGui.GetColorU32(RaffleTheme.Teal), winnerName);
+        draw.AddText(textBoxMin + new Vector2((winnerTextWidth - nameSize.X) * 0.5f, (textBoxSize.Y - nameSize.Y) * 0.40f), ImGui.GetColorU32(RaffleTheme.Teal), winnerName);
 
         var ticketText = $"{winnerPopup.Tickets:N0} of {winnerPopup.TotalTickets:N0} tickets";
+        if (winnerPopup.JackpotTickets < winnerPopup.Tickets)
+            ticketText += $" · {winnerPopup.JackpotTickets:N0} paid";
         var ticketSize = ImGui.CalcTextSize(ticketText);
-        draw.AddText(textBoxMin + new Vector2((winnerTextWidth - ticketSize.X) * 0.5f, (logoBox - ticketSize.Y) * 0.64f), ImGui.GetColorU32(RaffleTheme.Muted), ticketText);
+        draw.AddText(textBoxMin + new Vector2((winnerTextWidth - ticketSize.X) * 0.5f, (textBoxSize.Y - ticketSize.Y) * 0.64f), ImGui.GetColorU32(RaffleTheme.Muted), ticketText);
         ImGui.Dummy(textBoxSize);
 
-        ImGui.SameLine();
-        DrawLogoOrPlaceholder(new Vector2(logoBox, logoBox));
+        if (hasLogo)
+        {
+            ImGui.SameLine();
+            DrawLogoImage(customLogo!, new Vector2(logoBox, logoBox));
+        }
 
         var payoutY = MathF.Max(ImGui.GetCursorPosY() + 16f, popupSize.Y - 138f);
         ImGui.SetCursorPosY(payoutY);

@@ -15,6 +15,8 @@ internal sealed class LogoService : IDisposable
         this.config = config;
     }
 
+    public bool HasCustomLogoPath => !string.IsNullOrWhiteSpace(config.Profile.CustomLogoPath);
+
     public IDalamudTextureWrap? Texture
     {
         get
