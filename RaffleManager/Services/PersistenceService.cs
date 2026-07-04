@@ -215,6 +215,7 @@ internal sealed class PersistenceService
         TicketPrice = source.TicketPrice,
         BaseJackpot = source.BaseJackpot,
         WinnerSplitPercent = source.WinnerSplitPercent,
+        BogoBonusTicketsCountTowardJackpot = source.BogoBonusTicketsCountTowardJackpot,
         AnnounceWinner = source.AnnounceWinner,
         AnnouncementChannel = source.AnnouncementChannel,
         WinnerMessageTemplate = source.WinnerMessageTemplate,

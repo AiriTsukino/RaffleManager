@@ -22,7 +22,8 @@ internal sealed class MainWindow : Window, IDisposable
     private string nameInput = string.Empty;
     private string worldInput = string.Empty;
     private int ticketsInput = 1;
-    private bool countTicketsTowardJackpot = true;
+    private bool vipFreeTicket;
+    private bool addBogoBonusTickets;
     private bool spinning;
     private double nextTickSeconds;
     private string displayName = "Ready";
@@ -235,13 +236,20 @@ internal sealed class MainWindow : Window, IDisposable
 
         DrawQuantityButtons();
 
-        if (ImGui.Checkbox("Count these tickets toward jackpot", ref countTicketsTowardJackpot))
+        if (ImGui.Checkbox("VIP/Free Ticket", ref vipFreeTicket))
             persistence.SaveConfig();
-        UiHelpers.TooltipOnHover("Turn this off for free/VIP entries. These entries still count as raffle chances, but they do not increase the jackpot total.");
+        UiHelpers.TooltipOnHover("Adds entries without increasing the jackpot. Use for VIP comps, giveaways, or other free entries.");
+        ImGui.SameLine();
+        ImGui.Checkbox("BOGO bonus", ref addBogoBonusTickets);
+        UiHelpers.TooltipOnHover("Adds the same number of bonus tickets as the entered amount. Example: entering 10 tickets with BOGO enabled adds 20 total tickets. The bonus tickets only add to jackpot if enabled in the settings window.");
+
+        var (totalTicketsToAdd, jackpotTicketsToAdd) = GetTicketAddAmounts();
+        if (addBogoBonusTickets)
+            UiHelpers.TextMutedWrapped($"BOGO preview: adds {totalTicketsToAdd:N0} total chances, {jackpotTicketsToAdd:N0} jackpot ticket(s).");
 
         if (ImGui.Button("Add to Raffle"))
         {
-            if (raffle.AddOrUpdate(nameInput, worldInput, ticketsInput, countTicketsTowardJackpot))
+            if (raffle.AddOrUpdate(nameInput, worldInput, totalTicketsToAdd, jackpotTicketsToAdd))
             {
                 nameInput = string.Empty;
                 worldInput = string.Empty;
@@ -251,14 +259,28 @@ internal sealed class MainWindow : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.Button("Add Target"))
         {
-            if (raffle.AddCurrentTarget(ticketsInput, countTicketsTowardJackpot))
+            if (raffle.AddCurrentTarget(totalTicketsToAdd, jackpotTicketsToAdd))
                 ticketsInput = 1;
         }
-        UiHelpers.TooltipOnHover("Uses your current in-game target's name and home world. If that player already exists with the same name/world, their tickets are increased. Free/VIP entries do not add to the jackpot when the checkbox is off.");
+        UiHelpers.TooltipOnHover("Uses your current in-game target's name and home world. If that player already exists with the same name/world, their tickets are increased. VIP/free entries do not add to the jackpot.");
         ImGui.SameLine();
         if (ImGui.Button("Undo")) raffle.Undo();
 
         UiHelpers.TextMutedWrapped(raffle.LastStatus);
+    }
+
+
+    private (int TotalTickets, int JackpotTickets) GetTicketAddAmounts()
+    {
+        var enteredTickets = Math.Max(1, ticketsInput);
+        var bonusTickets = addBogoBonusTickets ? enteredTickets : 0;
+        var totalTickets = enteredTickets + bonusTickets;
+
+        var jackpotTickets = vipFreeTicket ? 0 : enteredTickets;
+        if (!vipFreeTicket && addBogoBonusTickets && Profile.BogoBonusTicketsCountTowardJackpot)
+            jackpotTickets += bonusTickets;
+
+        return (totalTickets, Math.Clamp(jackpotTickets, 0, totalTickets));
     }
 
     private void DrawQuantityButtons()

@@ -22,6 +22,7 @@ public sealed class VenueProfile
     public int TicketPrice { get; set; } = 100_000;
     public int BaseJackpot { get; set; } = 5_000_000;
     public int WinnerSplitPercent { get; set; } = 50;
+    public bool BogoBonusTicketsCountTowardJackpot { get; set; }
 
     public bool AnnounceWinner { get; set; } = true;
     public WinnerChatChannel AnnouncementChannel { get; set; } = WinnerChatChannel.Yell;

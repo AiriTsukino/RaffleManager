@@ -29,6 +29,9 @@ internal sealed class RaffleService
     public string LastStatus { get; private set; } = "Ready.";
 
     public bool AddOrUpdate(string name, string world, int tickets, bool countTowardJackpot = true)
+        => AddOrUpdate(name, world, tickets, countTowardJackpot ? tickets : 0);
+
+    public bool AddOrUpdate(string name, string world, int tickets, int jackpotTickets)
     {
         name = (name ?? string.Empty).Trim();
         world = (world ?? string.Empty).Trim();
@@ -44,6 +47,8 @@ internal sealed class RaffleService
             return false;
         }
 
+        jackpotTickets = Math.Clamp(jackpotTickets, 0, tickets);
+
         Snapshot();
         var existing = Data.Entries.FirstOrDefault(e =>
             e.Name.Equals(name, StringComparison.OrdinalIgnoreCase) &&
@@ -53,8 +58,9 @@ internal sealed class RaffleService
         {
             var currentJackpotTickets = existing.EffectiveJackpotTickets;
             existing.Tickets += tickets;
-            existing.JackpotTickets = currentJackpotTickets + (countTowardJackpot ? tickets : 0);
-            var freeNote = countTowardJackpot ? string.Empty : $" ({tickets:N0} free/VIP)";
+            existing.JackpotTickets = currentJackpotTickets + jackpotTickets;
+            var freeTickets = tickets - jackpotTickets;
+            var freeNote = freeTickets > 0 ? $" ({freeTickets:N0} free/VIP)" : string.Empty;
             LastStatus = $"Updated {existing.DisplayName}: now {existing.Tickets:N0} ticket(s){freeNote}.";
         }
         else
@@ -64,9 +70,10 @@ internal sealed class RaffleService
                 Name = name,
                 World = world,
                 Tickets = tickets,
-                JackpotTickets = countTowardJackpot ? tickets : 0,
+                JackpotTickets = jackpotTickets,
             });
-            var freeNote = countTowardJackpot ? string.Empty : " as free/VIP entries";
+            var freeTickets = tickets - jackpotTickets;
+            var freeNote = freeTickets > 0 ? $" ({freeTickets:N0} free/VIP)" : string.Empty;
             LastStatus = $"Added {name}{(string.IsNullOrWhiteSpace(world) ? string.Empty : $"@{world}")} with {tickets:N0} ticket(s){freeNote}.";
         }
 
@@ -167,6 +174,9 @@ internal sealed class RaffleService
     }
 
     public bool AddCurrentTarget(int tickets, bool countTowardJackpot = true)
+        => AddCurrentTarget(tickets, countTowardJackpot ? tickets : 0);
+
+    public bool AddCurrentTarget(int tickets, int jackpotTickets)
     {
         if (DalamudServices.TargetManager.Target is not IPlayerCharacter pc)
         {
@@ -178,7 +188,7 @@ internal sealed class RaffleService
         var world = string.Empty;
         try { world = pc.HomeWorld.Value.Name.ToString(); }
         catch { world = string.Empty; }
-        return AddOrUpdate(name, world, tickets, countTowardJackpot);
+        return AddOrUpdate(name, world, tickets, jackpotTickets);
     }
 
     private void Snapshot()

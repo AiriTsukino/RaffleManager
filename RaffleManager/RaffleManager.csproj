@@ -7,7 +7,7 @@
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <AssemblyName>RaffleManager</AssemblyName>
     <RootNamespace>RaffleManager</RootNamespace>
-    <Version>0.2.15.0</Version>
+    <Version>0.2.18.0</Version>
     <Description>Ticket-based venue raffle manager for FFXIV venues.</Description>
     <IsPackable>false</IsPackable>
     <UseWindowsForms>true</UseWindowsForms>

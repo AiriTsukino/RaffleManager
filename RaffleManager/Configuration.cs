@@ -19,6 +19,7 @@ public sealed class Configuration : IPluginConfiguration
     public int TicketPrice { get; set; } = 100_000;
     public int BaseJackpot { get; set; } = 5_000_000;
     public int WinnerSplitPercent { get; set; } = 50;
+    public bool BogoBonusTicketsCountTowardJackpot { get; set; }
     public bool AnnounceWinner { get; set; } = true;
     public WinnerChatChannel AnnouncementChannel { get; set; } = WinnerChatChannel.Yell;
     public string WinnerMessageTemplate { get; set; } = "Congratulations {winner}! You won {payout} from the {jackpot} raffle jackpot!";
@@ -56,6 +57,7 @@ public sealed class Configuration : IPluginConfiguration
                 TicketPrice = Math.Max(0, TicketPrice),
                 BaseJackpot = Math.Max(0, BaseJackpot),
                 WinnerSplitPercent = Math.Clamp(WinnerSplitPercent, 1, 100),
+                BogoBonusTicketsCountTowardJackpot = BogoBonusTicketsCountTowardJackpot,
                 AnnounceWinner = AnnounceWinner,
                 AnnouncementChannel = AnnouncementChannel,
                 WinnerMessageTemplate = string.IsNullOrWhiteSpace(WinnerMessageTemplate)

@@ -189,7 +189,16 @@ internal sealed class SettingsWindow : Window
             if (ImGui.Button("80/20")) SetSplit(80);
 
             ImGui.Spacing();
-            UiHelpers.TextMutedWrapped("Winner payout is jackpot multiplied by the winner percentage. The venue side is the remainder.");
+            var bogoBonusCounts = Profile.BogoBonusTicketsCountTowardJackpot;
+            if (ImGui.Checkbox("BOGO bonus tickets add to jackpot", ref bogoBonusCounts))
+            {
+                Profile.BogoBonusTicketsCountTowardJackpot = bogoBonusCounts;
+                persistence.SaveNow();
+            }
+            UiHelpers.TooltipOnHover("When enabled, the free bonus tickets from BOGO entries also increase the jackpot. When disabled, only the paid tickets increase the jackpot.");
+
+            ImGui.Spacing();
+            UiHelpers.TextMutedWrapped("Winner payout is jackpot multiplied by the winner percentage. The venue side is the remainder. BOGO can add matching bonus tickets from the main raffle tab.");
         }
         UiHelpers.EndCard();
     }
